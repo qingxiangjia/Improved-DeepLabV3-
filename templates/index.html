@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基于改进的DeepLabV3+的隧道衬砌裂缝分割平台</title>
+    <link rel="icon" href="img/67.jpg" type="image/x-icon">
+</head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            width: 90%;
+            max-width: 800px;
+            margin: auto;
+            text-align: center;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #444;
+        }
+        #upload-form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        #file-input {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #upload-form button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #upload-form button:hover {
+            background-color: #0056b3;
+        }
+        .info {
+            margin-top: 20px;
+            text-align: left;
+        }
+        .info p {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .images {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        .image-container {
+            width: 45%;
+        }
+        .image-container img {
+            width: 100%;
+            border: 1px solid #ccc;
+            padding: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            display: none;
+        }
+        .image-container p {
+            font-size: 14px;
+            color: #666;
+        }
+        #loading {
+            display: none;
+            margin-top: 20px;
+        }
+        .btn-save {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+        }
+        .btn-save:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>基于改进的DeepLabV3+的隧道衬砌裂缝分割平台</h1>
+        <form id="upload-form" enctype="multipart/form-data">
+            <input type="file" id="file-input" name="file" accept="image/*">
+            <button type="submit">上传并预测</button>
+        </form>
+        <div id="loading">正在处理，请稍候...</div>
+        <div class="info" id="image-info">
+            <p id="file-name">文件名：N/A</p>
+            <p id="file-size">文件大小：N/A</p>
+            <p id="image-dimensions">图片尺寸：N/A</p>
+            <p id="detection-speed">检测速度：N/A</p>
+        </div>
+        <div class="images" id="result">
+            <div class="image-container">
+                <p>原始图片</p>
+                <img id="original" src="#" alt="原始图片">
+
+            </div>
+            <div class="image-container">
+                <p>分割图片</p>
+                <img id="segmented" src="#" alt="分割图片">
+                <button class="btn-save" onclick="saveImage('segmented')">保存</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('请选择一张图片');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            document.getElementById('loading').style.display = 'block';
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.error) {
+                    alert(result.error);
+                } else {
+                    displayImageInfo(file, result);
+                    displayImage('original', result.original);
+                    displayImage('segmented', result.segmented);
+                }
+            } catch (error) {
+                alert('处理过程中发生错误');
+                console.error('Error:', error);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+
+        function displayImageInfo(file, result) {
+            const fileSize = (file.size / 1024).toFixed(2) + ' KB';
+            const imageDimensions = `${result.width} x ${result.height}`;
+            document.getElementById('file-name').textContent = `文件名：${file.name}`;
+            document.getElementById('file-size').textContent = `文件大小：${fileSize}`;
+            document.getElementById('image-dimensions').textContent = `图片尺寸：${imageDimensions}`;
+            document.getElementById('detection-speed').textContent = `检测速度：${result.speed} 秒`;
+        }
+
+        function displayImage(id, base64String) {
+            const img = document.getElementById(id);
+            img.src = 'data:image/png;base64,' + base64String;
+            img.style.display = 'block';
+        }
+
+        function saveImage(id) {
+            const img = document.getElementById(id);
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = `${id}.png`;
+            link.click();
+        }
+    </script>
+</body>
+</html>
+
